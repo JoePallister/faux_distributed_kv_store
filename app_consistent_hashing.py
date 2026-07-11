@@ -1,15 +1,22 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+import logging
 
 NUM_NODES = 4
 HASH_RING_SIZE = 2**32
+NODE_POSITIONS = [i * (HASH_RING_SIZE // NUM_NODES) for i in range(NUM_NODES)]
+
+logging.basicConfig(level=logging.INFO)
 
 
 def find_node(key: str) -> int:
-    """Find the node responsible for the given key using consistent hashing."""
     hash_value = hash(key) % HASH_RING_SIZE
-    node_id = hash_value % NUM_NODES
-    return node_id
+
+    distances = {pos: (pos - hash_value) % HASH_RING_SIZE for pos in NODE_POSITIONS}
+
+    closest_node_position = min(distances, key=distances.get)
+
+    return NODE_POSITIONS.index(closest_node_position)
 
 
 class Item(BaseModel):
@@ -40,3 +47,8 @@ def create_item(item: Item):
     store = stores[node_id]
     store[item.key] = item.value
     return {"message": f"Item with key '{item.key}' created successfully."}
+
+
+@app.delete("/store/{node_id}")
+def delete_node(node_id: int):
+    return {}
