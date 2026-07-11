@@ -1,10 +1,12 @@
+import bisect
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 import logging
 
 NUM_NODES = 4
 HASH_RING_SIZE = 2**32
-NODE_POSITIONS = [i * (HASH_RING_SIZE // NUM_NODES) for i in range(NUM_NODES)]
+ring = [(i * (HASH_RING_SIZE // NUM_NODES), i) for i in range(NUM_NODES)]
 
 logging.basicConfig(level=logging.INFO)
 
@@ -12,11 +14,14 @@ logging.basicConfig(level=logging.INFO)
 def find_node(key: str) -> int:
     hash_value = hash(key) % HASH_RING_SIZE
 
-    distances = {pos: (pos - hash_value) % HASH_RING_SIZE for pos in NODE_POSITIONS}
+    positions = [p for p, node in ring]
 
-    closest_node_position = min(distances, key=distances.get)
+    idx = bisect.bisect_left(positions, hash_value)
 
-    return NODE_POSITIONS.index(closest_node_position)
+    if idx == len(ring):
+        idx = 0
+
+    return ring[idx][1]
 
 
 class Item(BaseModel):
@@ -51,4 +56,6 @@ def create_item(item: Item):
 
 @app.delete("/store/{node_id}")
 def delete_node(node_id: int):
+    pairs_to_reassign = stores[node_id].copy()
+    stores[node_id] = {}
     return {}
