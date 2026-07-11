@@ -6,7 +6,9 @@ import logging
 
 NUM_NODES = 4
 HASH_RING_SIZE = 2**32
-ring = [(i * (HASH_RING_SIZE // NUM_NODES), i) for i in range(NUM_NODES)]
+NODE_NAMES = [f"node_{i}" for i in range(NUM_NODES)]
+ring = [(i * (HASH_RING_SIZE // NUM_NODES), NODE_NAMES[i]) for i in range(NUM_NODES)]
+stores = {NODE_NAMES[i]: {} for i in range(NUM_NODES)}
 
 logging.basicConfig(level=logging.INFO)
 
@@ -31,31 +33,39 @@ class Item(BaseModel):
 
 app = FastAPI()
 
-stores = [{} for _ in range(NUM_NODES)]
-
 
 @app.get("/store")
 def read_stores():
     return stores
 
 
-@app.get("/store/{node_id}")
-def read_store(node_id: int):
-    if 0 <= node_id < NUM_NODES:
-        return stores[node_id]
+@app.get("/ring")
+def read_ring():
+    return ring
+
+
+@app.get("/store/{node_name}")
+def read_store(node_name: str):
+    if node_name in stores:
+        return stores[node_name]
     return {"error": "Node not found"}
 
 
 @app.post("/store")
 def create_item(item: Item):
-    node_id = find_node(item.key)
-    store = stores[node_id]
+    node_name = find_node(item.key)
+    store = stores[node_name]
     store[item.key] = item.value
     return {"message": f"Item with key '{item.key}' created successfully."}
 
 
-@app.delete("/store/{node_id}")
-def delete_node(node_id: int):
-    pairs_to_reassign = stores[node_id].copy()
-    stores[node_id] = {}
+@app.delete("/store/{node_name}")
+def delete_node(node_name: str):
+    global ring
+    pairs_to_reassign = stores[node_name].copy()
+    stores.pop(node_name)
+    ring = [node for node in ring if node[1] != node_name]
+    for key, value in pairs_to_reassign.items():
+        new_node_name = find_node(key)
+        stores[new_node_name][key] = value
     return {}
