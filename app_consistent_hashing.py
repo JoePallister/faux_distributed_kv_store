@@ -30,6 +30,16 @@ def find_node(key: str, hash_ring_size: int = HASH_RING_SIZE, ring: list = ring)
     return ring[idx][1]
 
 
+def reassign_keys(node_name: str, ring: list, stores: dict):
+    pairs_to_reassign = stores[node_name].copy()
+    stores.pop(node_name)
+    ring = [node for node in ring if node[1] != node_name]
+    for key, value in pairs_to_reassign.items():
+        new_node_name = find_node(key, HASH_RING_SIZE, ring)
+        stores[new_node_name][key] = value
+    return ring
+
+
 class Item(BaseModel):
     key: str
     value: str
@@ -66,10 +76,5 @@ def create_item(item: Item):
 @app.delete("/store/{node_name}")
 def delete_node(node_name: str):
     global ring
-    pairs_to_reassign = stores[node_name].copy()
-    stores.pop(node_name)
-    ring = [node for node in ring if node[1] != node_name]
-    for key, value in pairs_to_reassign.items():
-        new_node_name = find_node(key, HASH_RING_SIZE, ring)
-        stores[new_node_name][key] = value
+    ring = reassign_keys(node_name, ring, stores)
     return {}
