@@ -59,13 +59,45 @@ def store_item(
     logging.info(f"Stored key '{item.key}' in node '{node_name}'.")
 
 
-def reassign_keys_and_delete_node(node_name: str, ring: list, stores: dict):
+def reassign_keys_and_delete_node(
+    node_name: str, ring: list, stores: dict, hash_ring_size: int = HASH_RING_SIZE
+):
     pairs_to_reassign = stores[node_name].copy()
     stores.pop(node_name)
     ring = [node for node in ring if node[1] != node_name]
     for key, value in pairs_to_reassign.items():
-        new_node_name = find_node(key, hash_ring_size=HASH_RING_SIZE, ring=ring)
+        new_node_name = find_node(key, hash_ring_size=hash_ring_size, ring=ring)
         stores[new_node_name][key] = value
+    return ring
+
+
+def add_node_and_reassign_keys(
+    node_name: str, ring: list, stores: dict, hash_ring_size: int = HASH_RING_SIZE
+):
+
+    if node_name in stores:
+        logging.warning(f"Node '{node_name}' already exists.")
+        return ring
+
+    stores[node_name] = {}
+    ring.append((hash(node_name) % hash_ring_size, node_name))
+    ring.sort()
+
+    for existing_node in stores.keys():
+        if existing_node == node_name:
+            continue
+        keys_to_reassign = [
+            key
+            for key in stores[existing_node]
+            if find_node(key, hash_ring_size, ring=ring) == node_name
+        ]
+        for key in keys_to_reassign:
+            value = stores[existing_node].pop(key)
+            stores[node_name][key] = value
+            logging.info(
+                f"Reassigned key '{key}' from '{existing_node}' to '{node_name}'."
+            )
+
     return ring
 
 
@@ -102,8 +134,8 @@ def delete_node(node_name: str):
     return ring
 
 
-# @app.post("/ring/{node_name}")
-# def add_node(node_name: str):
-#     global ring
-#     ring = add_node_and_reassign_keys(node_name, ring, stores)
-#     return ring
+@app.post("/ring/{node_name}")
+def add_node(node_name: str):
+    global ring
+    ring = add_node_and_reassign_keys(node_name, ring, stores)
+    return ring
