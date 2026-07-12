@@ -11,6 +11,11 @@ NODE_NAMES = [f"node_{i}" for i in range(NUM_NODES)]
 logging.basicConfig(level=logging.INFO)
 
 
+class Item(BaseModel):
+    key: str
+    value: str
+
+
 def hash(key: str) -> int:
     return int(hashlib.sha256(key.encode()).hexdigest(), 16)
 
@@ -42,6 +47,12 @@ def find_node(key: str, hash_ring_size: int = HASH_RING_SIZE, ring: list = ring)
     return ring[idx][1]
 
 
+def store_item(item: Item, stores: dict, ring: list):
+    node_name = find_node(item.key, HASH_RING_SIZE, ring)
+    stores[node_name][item.key] = item.value
+    logging.info(f"Stored key '{item.key}' in node '{node_name}'.")
+
+
 def reassign_keys_and_delete_node(node_name: str, ring: list, stores: dict):
     pairs_to_reassign = stores[node_name].copy()
     stores.pop(node_name)
@@ -50,11 +61,6 @@ def reassign_keys_and_delete_node(node_name: str, ring: list, stores: dict):
         new_node_name = find_node(key, HASH_RING_SIZE, ring)
         stores[new_node_name][key] = value
     return ring
-
-
-class Item(BaseModel):
-    key: str
-    value: str
 
 
 app = FastAPI()
@@ -79,9 +85,7 @@ def read_store(node_name: str):
 
 @app.post("/store")
 def create_item(item: Item):
-    node_name = find_node(item.key, HASH_RING_SIZE, ring)
-    store = stores[node_name]
-    store[item.key] = item.value
+    store_item(item, stores, ring)
     return {"message": f"Item with key '{item.key}' created successfully."}
 
 
