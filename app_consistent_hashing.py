@@ -20,8 +20,13 @@ def hash(key: str) -> int:
     return int(hashlib.sha256(key.encode()).hexdigest(), 16)
 
 
-def construct_hash_ring(node_names: list, hash_ring_size: int = HASH_RING_SIZE) -> list:
-    return [(hash(node_name) % hash_ring_size, node_name) for node_name in node_names]
+def construct_hash_ring(
+    node_names: list,
+    hash_ring_size: int = HASH_RING_SIZE,
+) -> list:
+    return sorted(
+        (hash(node_name) % hash_ring_size, node_name) for node_name in node_names
+    )
 
 
 ring = construct_hash_ring(NODE_NAMES, HASH_RING_SIZE)
@@ -43,12 +48,13 @@ def find_node(key: str, hash_ring_size: int = HASH_RING_SIZE, ring: list = ring)
 
     if idx == len(ring):
         idx = 0
-
     return ring[idx][1]
 
 
-def store_item(item: Item, stores: dict, ring: list):
-    node_name = find_node(item.key, HASH_RING_SIZE, ring)
+def store_item(
+    item: Item, stores: dict, ring: list, hash_ring_size: int = HASH_RING_SIZE
+):
+    node_name = find_node(item.key, hash_ring_size=hash_ring_size, ring=ring)
     stores[node_name][item.key] = item.value
     logging.info(f"Stored key '{item.key}' in node '{node_name}'.")
 
@@ -58,7 +64,7 @@ def reassign_keys_and_delete_node(node_name: str, ring: list, stores: dict):
     stores.pop(node_name)
     ring = [node for node in ring if node[1] != node_name]
     for key, value in pairs_to_reassign.items():
-        new_node_name = find_node(key, HASH_RING_SIZE, ring)
+        new_node_name = find_node(key, hash_ring_size=HASH_RING_SIZE, ring=ring)
         stores[new_node_name][key] = value
     return ring
 
