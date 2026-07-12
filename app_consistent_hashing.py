@@ -7,14 +7,26 @@ import logging
 NUM_NODES = 4
 HASH_RING_SIZE = 2**32
 NODE_NAMES = [f"node_{i}" for i in range(NUM_NODES)]
-ring = [(i * (HASH_RING_SIZE // NUM_NODES), NODE_NAMES[i]) for i in range(NUM_NODES)]
-stores = {NODE_NAMES[i]: {} for i in range(NUM_NODES)}
 
 logging.basicConfig(level=logging.INFO)
 
 
 def hash(key: str) -> int:
     return int(hashlib.sha256(key.encode()).hexdigest(), 16)
+
+
+def construct_hash_ring(node_names: list, hash_ring_size: int = HASH_RING_SIZE) -> list:
+    return [(hash(node_name) % hash_ring_size, node_name) for node_name in node_names]
+
+
+ring = construct_hash_ring(NODE_NAMES, HASH_RING_SIZE)
+
+
+def construct_stores(ring: list) -> dict:
+    return {node_name: {} for _, node_name in ring}
+
+
+stores = construct_stores(ring)
 
 
 def find_node(key: str, hash_ring_size: int = HASH_RING_SIZE, ring: list = ring) -> str:
@@ -30,7 +42,7 @@ def find_node(key: str, hash_ring_size: int = HASH_RING_SIZE, ring: list = ring)
     return ring[idx][1]
 
 
-def reassign_keys(node_name: str, ring: list, stores: dict):
+def reassign_keys_and_delete_node(node_name: str, ring: list, stores: dict):
     pairs_to_reassign = stores[node_name].copy()
     stores.pop(node_name)
     ring = [node for node in ring if node[1] != node_name]
@@ -73,8 +85,15 @@ def create_item(item: Item):
     return {"message": f"Item with key '{item.key}' created successfully."}
 
 
-@app.delete("/store/{node_name}")
+@app.delete("/ring/{node_name}")
 def delete_node(node_name: str):
     global ring
-    ring = reassign_keys(node_name, ring, stores)
-    return {}
+    ring = reassign_keys_and_delete_node(node_name, ring, stores)
+    return ring
+
+
+# @app.post("/ring/{node_name}")
+# def add_node(node_name: str):
+#     global ring
+#     ring = add_node_and_reassign_keys(node_name, ring, stores)
+#     return ring

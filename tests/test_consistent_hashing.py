@@ -1,4 +1,4 @@
-from app_consistent_hashing import find_node, reassign_keys
+from app_consistent_hashing import find_node, reassign_keys_and_delete_node
 
 
 def test_find_node():
@@ -25,7 +25,7 @@ def test_reassign_keys():
         "node3": {"key3": "value3"},
     }
     test_ring = [(0, "node1"), (3, "node2"), (6, "node3")]
-    new_ring = reassign_keys("node2", test_ring, test_stores)
+    new_ring = reassign_keys_and_delete_node("node2", test_ring, test_stores)
 
     # After removing node2, it should not be in the new ring
     assert all(node[1] != "node2" for node in new_ring)
