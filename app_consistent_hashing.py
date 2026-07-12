@@ -1,5 +1,5 @@
 import bisect
-
+import hashlib
 from fastapi import FastAPI
 from pydantic import BaseModel
 import logging
@@ -13,8 +13,12 @@ stores = {NODE_NAMES[i]: {} for i in range(NUM_NODES)}
 logging.basicConfig(level=logging.INFO)
 
 
-def find_node(key: str) -> int:
-    hash_value = hash(key) % HASH_RING_SIZE
+def hash(key: str) -> int:
+    return int(hashlib.sha256(key.encode()).hexdigest(), 16)
+
+
+def find_node(key: str, hash_ring_size: int = HASH_RING_SIZE, ring: list = ring) -> str:
+    hash_value = hash(key) % hash_ring_size
 
     positions = [p for p, node in ring]
 
@@ -53,7 +57,7 @@ def read_store(node_name: str):
 
 @app.post("/store")
 def create_item(item: Item):
-    node_name = find_node(item.key)
+    node_name = find_node(item.key, HASH_RING_SIZE, ring)
     store = stores[node_name]
     store[item.key] = item.value
     return {"message": f"Item with key '{item.key}' created successfully."}
@@ -66,6 +70,6 @@ def delete_node(node_name: str):
     stores.pop(node_name)
     ring = [node for node in ring if node[1] != node_name]
     for key, value in pairs_to_reassign.items():
-        new_node_name = find_node(key)
+        new_node_name = find_node(key, HASH_RING_SIZE, ring)
         stores[new_node_name][key] = value
     return {}
