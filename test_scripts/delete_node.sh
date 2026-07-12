@@ -2,12 +2,12 @@
 
 set -e
 
-NODE_ID=$1
+NODE_NAME=$1
 
-BASE_URL="http://127.0.0.1:8000/store/$NODE_ID"
+BASE_URL="http://127.0.0.1:8000/ring/$NODE_NAME"
 
 echo "Testing deleting a node"
-echo "Node ID: $NODE_ID"
+echo "Node NAME: $NODE_NAME"
 echo
 echo "Value: $VALUE"
 echo

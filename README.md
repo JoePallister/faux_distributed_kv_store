@@ -12,6 +12,14 @@ and get the contents of the "nodes" with
 
 We can see the posted pairs getting distributed to the nodes based on the key hash values modulo N, where N is the number of nodes. The issue with this is if we want to add or remove nodes we would have to move all stored pairs as their hashed values modulo N-1 or N+1 (removing and adding a node respectively) will not be the same as the node they are stored on. We don't implement this here.
 
+# Consistent Hashing
+
+Run the app with consistent hashing with 
+
+```uv run uvicorn app_consistent_hashing:app --reload```
+
+The same scripts to get / post key-value pairs work. There are also scripts to add/delete nodes by name, testing how keys get redistributed under consistent hashing.
+
 # Testing
 
 Run unit tests with
@@ -21,5 +29,3 @@ Run unit tests with
 
 # TODO:
 * Add replication and read / write quorums. Show that W + R > N always gives up to date reads
-* Used hashes to distribute nodes around the hash ring
-* Implement virtual nodes
